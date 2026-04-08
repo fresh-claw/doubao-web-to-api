@@ -1,119 +1,120 @@
 # maintenance
 
-## 一、这个 skill 现在依赖什么
+## 一、现在依赖什么
 
-它依赖 3 层：
+这版依赖 3 层：
 
 1. `doubao_web_to_api.py`
-2. `opencli doubao` 或 `opencli doubao-app`
-3. 豆包网页或桌面版自身页面结构
-
-所以出问题时，要先判断是哪一层坏了。
+2. 浏览器远程调试端口
+3. 豆包网页自身结构
 
 ## 二、排查顺序
 
-### 第一步：看 OpenCLI 在不在
+### 第一步：看浏览器调试端口在不在
+
+默认端口是 `9231`。
 
 ```bash
-opencli list
+curl -s http://127.0.0.1:9231/json/version
 ```
 
-如果这一步失败，先修 OpenCLI，不要看脚本。
-
-### 第二步：看适配器在不在
-
-网页版：
+如果这一步失败，先执行：
 
 ```bash
-opencli doubao status -f json
+python3 skills/doubao-web-to-api/scripts/doubao_web_to_api.py open
 ```
 
-桌面版：
-
-```bash
-opencli doubao-app status -f json
-```
-
-如果这里失败，说明是 OpenCLI 和豆包连接层的问题。
-
-### 第三步：看 skill 脚本是不是好的
+### 第二步：看登录态在不在
 
 ```bash
 python3 skills/doubao-web-to-api/scripts/doubao_web_to_api.py login-check
-python3 skills/doubao-web-to-api/scripts/doubao_web_to_api.py ask "你好"
 ```
 
-如果 OpenCLI 本身正常，但脚本报错，再修脚本。
+如果这里失败，优先处理登录。
+
+### 第三步：看问答链路通不通
+
+```bash
+python3 skills/doubao-web-to-api/scripts/doubao_web_to_api.py new
+python3 skills/doubao-web-to-api/scripts/doubao_web_to_api.py ask "你好，请只回复：已连接" --mode quick
+python3 skills/doubao-web-to-api/scripts/doubao_web_to_api.py read
+```
 
 ## 三、最容易坏的地方
 
-### 1. OpenCLI 命令变了
+### 1. 输入框选择器变了
 
-如果 OpenCLI 后续改了命令格式，要改：
-- `scripts/doubao_web_to_api.py`
+现在依赖：
 
-重点看这里：
-- `ADAPTERS`
-- `build_cmd()`
-- `ACTION_ALIASES`
+- `textarea[placeholder="发消息..."]`
 
-### 2. 豆包适配器返回 JSON 结构变了
+如果豆包改版，优先看这里。
 
-如果还能返回，但拿不到正文，要改：
-- `parse_jsonish()`
-- `flatten_text()`
-- `guess_answer()`
+### 2. 新对话按钮变了
 
-### 3. 网页版不稳定
+现在依赖：
 
-做法：
-- 先改用 `--adapter app`
-- 如果桌面版更稳，就把默认逻辑改成先试 `app`
+- `[data-testid="create_conversation_button"]`
 
-### 4. 本地状态文件脏了
+### 3. 模式切换按钮变了
+
+现在依赖：
+
+- `[data-testid="mode-select-action-button"]`
+- `[data-testid="deep-thinking-action-item-0"]`
+- `[data-testid="deep-thinking-action-item-1"]`
+- `[data-testid="deep-thinking-action-item-3"]`
+
+### 4. 消息列表结构变了
+
+现在依赖：
+
+- `[data-testid="message-list"]`
+- `[data-testid="send_message"]`
+- `[data-testid="receive_message"]`
+
+如果能发不能读，优先看这几项。
+
+## 四、状态文件
 
 状态文件：
+
 - `~/.doubao-web-to-api/state.json`
+
+主要记录：
+
+- `cdp_endpoint`
+- `browser_path`
+- `profile_dir`
+- `start_url`
+- `last_mode`
 
 如果怀疑记录错了，可以删掉后重试。
 
-## 四、推荐维护动作
+## 五、推荐自检
 
-每次改完后，至少跑这 5 条：
+每次改完至少跑：
 
 ```bash
 python3 -m py_compile skills/doubao-web-to-api/scripts/doubao_web_to_api.py
 python3 skills/doubao-web-to-api/scripts/doubao_web_to_api.py login-check
 python3 skills/doubao-web-to-api/scripts/doubao_web_to_api.py new
-python3 skills/doubao-web-to-api/scripts/doubao_web_to_api.py ask "你好"
+python3 skills/doubao-web-to-api/scripts/doubao_web_to_api.py ask "你好，请只回复：Q1" --mode quick
+python3 skills/doubao-web-to-api/scripts/doubao_web_to_api.py ask "你好，请只回复：T1" --mode thinking
 python3 skills/doubao-web-to-api/scripts/doubao_web_to_api.py read
 ```
 
-## 五、后续扩展建议
+## 六、后续扩展
 
-下一阶段可以加：
-- `history`
-- `last`
-- `raw`
-- `ask --system`
-- `ask-file`
+下一阶段适合加：
 
-但建议顺序是：
-1. 先把文本问答稳定住
-2. 再加历史
-3. 最后再碰文件上传
+- 文件上传
+- 历史会话切换
+- 会话标题读取
+- 图片理解
 
-## 六、加新 skill 时怎么管目录
+但顺序建议是：
 
-未来新增 skill，按这一套：
-
-```text
-skills/<skill-name>/
-├── SKILL.md
-├── scripts/
-└── references/
-```
-
-并且同步更新：
-- `skills/catalog.json`
-- 仓库首页 `README.md`
+1. 先稳定文本对话
+2. 再加历史会话
+3. 最后再做文件和图片

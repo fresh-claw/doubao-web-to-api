@@ -9,6 +9,6 @@
       "macOS"
     ],
     "entry": "skills/doubao-web-to-api/SKILL.md",
-    "summary": "通过 OpenCLI 把豆包网页版变成可调用的 JSON 命令接口，必要时回退到桌面版。"
+    "summary": "通过 Playwright 直控已登录的豆包网页，把对话能力封成可调用的 JSON 命令接口。"
   }
 ]

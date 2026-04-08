@@ -4,117 +4,105 @@
 
 把 `doubao-web-to-api` 在 `Windows` 和 `macOS` 上接通。
 
-## 一、安装 OpenCLI
+## 一、安装依赖
+
+先保证本机有 Python 和 Playwright：
 
 ```bash
-npm install -g @jackwener/opencli
+python3 -m pip install playwright
 ```
 
-验证：
-
-```bash
-opencli list
-```
-
-如果这一步失败，后面都不用继续。
-
-## 二、优先接网页版
-
-优先原因：
-- 更简单
-- 不需要桌面版远程调试
-- 更接近日常使用方式
-
-### 步骤
-
-1. 安装 OpenCLI 官方 Browser Bridge 扩展
-2. 在浏览器里打开豆包网页
-3. 手动登录豆包
-4. 执行：
-
-```bash
-opencli doubao status -f json
-```
-
-如果返回成功，再执行：
-
-```bash
-python3 skills/doubao-web-to-api/scripts/doubao_web_to_api.py login-check
-```
-
-Windows 则用：
+Windows：
 
 ```powershell
-python skills/doubao-web-to-api/scripts/doubao_web_to_api.py login-check
+python -m pip install playwright
 ```
 
-## 三、网页版不稳时改用桌面版
+## 二、打开专用浏览器
 
-### macOS
+macOS：
 
 ```bash
-/Applications/Doubao.app/Contents/MacOS/Doubao --remote-debugging-port=9225
-export OPENCLI_CDP_ENDPOINT="http://127.0.0.1:9225"
-opencli doubao-app status -f json
+python3 skills/doubao-web-to-api/scripts/doubao_web_to_api.py open
 ```
 
-### Windows
+Windows：
 
 ```powershell
-start "" "C:\Path\To\Doubao.exe" --remote-debugging-port=9225
-set OPENCLI_CDP_ENDPOINT=http://127.0.0.1:9225
-opencli doubao-app status -f json
+python skills/doubao-web-to-api/scripts/doubao_web_to_api.py open
 ```
 
-把 `C:\Path\To\Doubao.exe` 换成实际路径。
+默认会：
+
+- 启动 `Chrome / Edge / Chromium`
+- 打开远程调试端口 `9231`
+- 使用专用配置目录 `~/.doubao-web-to-api/browser-profile`
+- 进入豆包聊天页
+
+## 三、登录豆包
+
+在刚打开的浏览器窗口里手动登录一次豆包。
+
+后面再次使用时，会继续复用这套浏览器配置，不用重复登录。
 
 ## 四、基本验收
 
 按这个顺序验：
 
-1. `opencli list`
-2. `opencli doubao status -f json` 或 `opencli doubao-app status -f json`
-3. `python3 ... login-check`
-4. `python3 ... new`
-5. `python3 ... ask "你好"`
-6. `python3 ... read`
+1. `open`
+2. `login-check`
+3. `new`
+4. `ask`
+5. `read`
 
-只要第 5 步和第 6 步能正常拿到回复，这个 skill 就算接通。
+macOS：
+
+```bash
+python3 skills/doubao-web-to-api/scripts/doubao_web_to_api.py login-check
+python3 skills/doubao-web-to-api/scripts/doubao_web_to_api.py new
+python3 skills/doubao-web-to-api/scripts/doubao_web_to_api.py ask "你好，请只回复：已连接" --mode quick
+python3 skills/doubao-web-to-api/scripts/doubao_web_to_api.py read
+```
+
+Windows：
+
+```powershell
+python skills/doubao-web-to-api/scripts/doubao_web_to_api.py login-check
+python skills/doubao-web-to-api/scripts/doubao_web_to_api.py new
+python skills/doubao-web-to-api/scripts/doubao_web_to_api.py ask "你好，请只回复：已连接" --mode quick
+python skills/doubao-web-to-api/scripts/doubao_web_to_api.py read
+```
 
 ## 五、常见问题
 
-### 1. `opencli` 不存在
+### 1. `open` 提示找不到浏览器
 
-说明：
-- 没安装
-- 或 PATH 没生效
-
-先执行：
+手动指定：
 
 ```bash
-opencli list
+python3 skills/doubao-web-to-api/scripts/doubao_web_to_api.py open --browser-path "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
 ```
 
-### 2. 网页版 `status` 失败
+### 2. `login-check` 提示 `cdp_not_available`
 
-优先检查：
-- 扩展有没有连上
-- 豆包是不是当前浏览器里登录的
-- 浏览器 profile 对不对
+说明浏览器调试端口没连上。  
+先重新执行：
 
-### 3. 桌面版 `status` 失败
+```bash
+python3 skills/doubao-web-to-api/scripts/doubao_web_to_api.py open
+```
 
-优先检查：
-- 有没有带 `--remote-debugging-port`
-- `OPENCLI_CDP_ENDPOINT` 是否正确
-- 豆包桌面版是否真的启动了调试端口
+### 3. `login-check` 提示未登录
+
+说明当前专用浏览器配置还没有豆包登录态。  
+在 `open` 打开的窗口里登录一次。
 
 ### 4. `ask` 超时
 
-加长超时：
+先把超时调大：
 
 ```bash
-python3 skills/doubao-web-to-api/scripts/doubao_web_to_api.py ask "问题" --timeout 300
+python3 skills/doubao-web-to-api/scripts/doubao_web_to_api.py ask "问题" --mode thinking --timeout 300
 ```
 
 ### 5. 出现验证码或风控
